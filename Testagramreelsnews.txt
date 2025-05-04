@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Testagram Reels - Global News Feed</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+    }
+    header {
+      background: #6200ea;
+      color: white;
+      padding: 1em;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .search-container {
+      display: flex;
+      justify-content: center;
+      padding: 10px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      position: sticky;
+      top: 60px;
+      z-index: 9;
+    }
+    .search-input {
+      width: 80%;
+      max-width: 500px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      font-size: 16px;
+    }
+    .category-filters {
+      display: flex;
+      overflow-x: auto;
+      padding: 10px;
+      background: #f0f0f0;
+      gap: 10px;
+      position: sticky;
+      top: 110px;
+      z-index: 8;
+    }
+    .category {
+      padding: 6px 12px;
+      background: #ddd;
+      border-radius: 20px;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .category.active {
+      background: #6200ea;
+      color: white;
+    }
+    .vendor-list {
+      display: flex;
+      overflow-x: auto;
+      padding: 10px;
+      background: #fff;
+      gap: 10px;
+    }
+    .vendor {
+      padding: 8px 12px;
+      background: #ccc;
+      border-radius: 20px;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .vendor.followed {
+      background: #6200ea;
+      color: white;
+    }
+    .feed {
+      padding: 15px;
+    }
+    .article {
+      background: white;
+      margin-bottom: 15px;
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease;
+    }
+    .article:hover {
+      transform: scale(1.01);
+    }
+    .article img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .title {
+      font-size: 1.1em;
+      margin: 10px 0 5px;
+    }
+    .meta {
+      font-size: 0.8em;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .share-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .share-button {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      cursor: pointer;
+    }
+    .share-facebook {
+      background: #3b5998;
+    }
+    .share-twitter {
+      background: #1da1f2;
+    }
+    .share-whatsapp {
+      background: #25d366;
+    }
+    .share-linkedin {
+      background: #0077b5;
+    }
+    .no-results {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <header><h2>Testagram Reels - Global News</h2></header>
+  
+  <div class="search-container">
+    <input type="text" class="search-input" id="searchInput" placeholder="Search articles...">
+  </div>
+  
+  <div class="category-filters" id="categoryFilters"></div>
+  <div class="vendor-list" id="vendorList"></div>
+  <div class="feed" id="feed"></div>
+  
+  <script>
+    // News sources with categories
+    const vendors = {
+      "BBC News": { url: "https://feeds.bbci.co.uk/news/rss.xml", category: "International" },
+      "CNN": { url: "https://rss.cnn.com/rss/edition.rss", category: "International" },
+      "Reuters": { url: "https://feeds.reuters.com/reuters/topNews", category: "International" },
+      "Fox News": { url: "https://moxie.foxnews.com/google-publisher/latest.xml", category: "International" },
+      "Guardian Nigeria": { url: "https://guardian.ng/feed/", category: "Africa" },
+      "Al Jazeera": { url: "https://www.aljazeera.com/xml/rss/all.xml", category: "International" },
+      "NTV Kenya": { url: "https://ntvkenya.co.ke/rss", category: "Africa" },
+      "Kenyans.co.ke": { url: "https://www.kenyans.co.ke/rss/news", category: "Africa" },
+      "CBC Canada": { url: "https://www.cbc.ca/cmlink/rss-topstories", category: "North America" },
+      "BellaNaija": { url: "https://www.bellanaija.com/feed/", category: "Entertainment" },
+      "Deadline": { url: "https://deadline.com/feed/", category: "Entertainment" },
+      "Homes & Gardens": { url: "https://www.homesandgardens.com/rss", category: "Lifestyle" },
+      "ABC Australia": { url: "https://www.abc.net.au/news/feed/51120/rss.xml", category: "Asia Pacific" },
+      "GhanaWeb": { url: "https://www.ghanaweb.com/GhanaHomePage/rss", category: "Africa" },
+      "The Better India": { url: "https://www.thebetterindia.com/feed/", category: "Asia Pacific" },
+      "Harper's Bazaar": { url: "https://www.harpersbazaar.com/rss/all.xml", category: "Lifestyle" },
+      "Sky News": { url: "https://feeds.skynews.com/feeds/rss/home.xml", category: "International" }
+    };
+    
+    // State variables
+    const followedVendors = JSON.parse(localStorage.getItem('followedVendors')) || [];
+    let activeCategory = localStorage.getItem('activeCategory') || 'All';
+    let searchTerm = '';
+    let allArticles = [];
+    
+    // DOM elements
+    const vendorListEl = document.getElementById("vendorList");
+    const feedEl = document.getElementById("feed");
+    const categoryFiltersEl = document.getElementById("categoryFilters");
+    const searchInputEl = document.getElementById("searchInput");
+    
+    // Get unique categories
+    function getCategories() {
+      const categories = new Set(Object.values(vendors).map(vendor => vendor.category));
+      return ['All', ...Array.from(categories)];
+    }
+    
+    // Render category filters
+    function renderCategories() {
+      const categories = getCategories();
+      categoryFiltersEl.innerHTML = '';
+      
+      categories.forEach(category => {
+        const categoryEl = document.createElement("div");
+        categoryEl.className = "category" + (category === activeCategory ? " active" : "");
+        categoryEl.textContent = category;
+        categoryEl.onclick = () => {
+          activeCategory = category;
+          localStorage.setItem('activeCategory', activeCategory);
+          renderCategories();
+          renderVendors();
+        };
+        categoryFiltersEl.appendChild(categoryEl);
+      });
+    }
+    
+    // Render vendor list
+    function renderVendors() {
+      vendorListEl.innerHTML = '';
+      
+      Object.entries(vendors).forEach(([name, info]) => {
+        if (activeCategory === 'All' || info.category === activeCategory) {
+          const tag = document.createElement("div");
+          tag.className = "vendor" + (followedVendors.includes(name) ? " followed" : "");
+          tag.textContent = name;
+          tag.onclick = () => toggleFollow(name);
+          vendorListEl.appendChild(tag);
+        }
+      });
+    }
+    
+    // Toggle follow status
+    function toggleFollow(name) {
+      const index = followedVendors.indexOf(name);
+      if (index > -1) followedVendors.splice(index, 1);
+      else followedVendors.push(name);
+      localStorage.setItem('followedVendors', JSON.stringify(followedVendors));
+      renderVendors();
+      renderFeed();
+    }
+    
+    // Fetch feed with cache
+    async function fetchWithCache(name, url) {
+      const key = `feed_${name}`;
+      const cache = JSON.parse(localStorage.getItem(key));
+      const now = Date.now();
+      if (cache && now - cache.timestamp < 3600000) {
+        return cache.data;
+      }
+      try {
+        const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${url}`);
+        const data = await res.json();
+        localStorage.setItem(key, JSON.stringify({ data, timestamp: now }));
+        return data;
+      } catch (e) {
+        console.error(`Failed to fetch ${name}`, e);
+        return { items: [] };
+      }
+    }
+    
+    // Create share buttons
+    function createShareButtons(article) {
+      const encodedUrl = encodeURIComponent(article.link);
+      const encodedTitle = encodeURIComponent(article.title);
+      
+      return `
+        <div class="share-buttons">
+          <a class="share-button share-facebook" href="https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}" target="_blank" title="Share on Facebook">
+            <i class="fab fa-facebook-f"></i>
+          </a>
+          <a class="share-button share-twitter" href="https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}" target="_blank" title="Share on Twitter">
+            <i class="fab fa-twitter"></i>
+          </a>
+          <a class="share-button share-whatsapp" href="https://api.whatsapp.com/send?text=${encodedTitle} ${encodedUrl}" target="_blank" title="Share on WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+          </a>
+          <a class="share-button share-linkedin" href="https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedTitle}" target="_blank" title="Share on LinkedIn">
+            <i class="fab fa-linkedin-in"></i>
+          </a>
+        </div>
+      `;
+    }
+    
+    // Render feed
+    async function renderFeed() {
+      if (followedVendors.length === 0) {
+        feedEl.innerHTML = "<p>Follow a news source to see articles.</p>";
+        allArticles = [];
+        return;
+      }
+      
+      feedEl.innerHTML = "<p>Loading articles...</p>";
+      allArticles = [];
+      
+      for (let name of followedVendors) {
+        const data = await fetchWithCache(name, vendors[name].url);
+        if (data.items) {
+          allArticles = allArticles.concat(data.items.map(item => ({ 
+            ...item, 
+            source: name,
+            category: vendors[name].category
+          })));
+        }
+      }
+      
+      allArticles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+      filterAndRenderArticles();
+    }
+    
+    // Filter and render articles
+    function filterAndRenderArticles() {
+      let filteredArticles = allArticles;
+      
+      // Apply search filter
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        filteredArticles = filteredArticles.filter(item => 
+          item.title.toLowerCase().includes(term) || 
+          item.description.toLowerCase().includes(term)
+        );
+      }
+      
+      // Render articles
+      if (filteredArticles.length === 0) {
+        feedEl.innerHTML = '<div class="no-results">No articles found matching your criteria</div>';
+        return;
+      }
+      
+      feedEl.innerHTML = '';
+      filteredArticles.forEach(item => {
+        const img = item.thumbnail || item.enclosure?.link || '';
+        const description = item.description.replace(/(<([^>]+)>)/gi, "").slice(0, 200) + '...';
+        
+        const html = `
+          <div class="article">
+            ${img ? `<img src="${img}" alt="thumbnail">` : ''}
+            <div class="title"><a href="${item.link}" target="_blank">${item.title}</a></div>
+            <div class="meta">${new Date(item.pubDate).toLocaleString()} - ${item.source} (${item.category})</div>
+            <p style="font-size:0.9em; color:#444;">${description}</p>
+            ${createShareButtons(item)}
+          </div>
+        `;
+        feedEl.innerHTML += html;
+      });
+    }
+    
+    // Search functionality
+    searchInputEl.addEventListener('input', (e) => {
+      searchTerm = e.target.value;
+      filterAndRenderArticles();
+    });
+    
+    // Initial render
+    renderCategories();
+    renderVendors();
+    renderFeed();
+    
+    // Auto refresh feed every hour
+    setInterval(renderFeed, 60 * 60 * 1000);
+  </script>
+</body>
+</html>
